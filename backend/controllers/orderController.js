@@ -6,9 +6,16 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // placing user order for frontend
 const placeOrder = async (req, res) => {
-  const frontend_url = "http://localhost:5173"; // Pastikan URL frontend benar
+  const frontend_url = "http://localhost:5174"; // Pastikan URL frontend benar
 
   try {
+    // Validasi data alamat
+    if (!req.body.address || !req.body.address.firstName || !req.body.address.lastName) {
+      return res.status(400).json({ success: false, message: "First name and last name are required in address." });
+    }
+
+    console.log("Order address:", req.body.address); // Debugging data address
+
     // Membuat order baru
     const newOrder = new orderModels({
       userId: req.body.userId,
@@ -64,19 +71,53 @@ const placeOrder = async (req, res) => {
 };
 
 const verifyOrder = async (req, res) => {
-  const {orderId, success} = req.body;
+  const { orderId, success } = req.body;
   try {
     if (success === "true") {
-      await orderModels.findByIdAndUpdate(orderId, {payment:true});
-      res.json({success:true, message:"Paid"})
+      await orderModels.findByIdAndUpdate(orderId, { payment: true });
+      res.json({ success: true, message: "Paid" });
     } else {
       await orderModels.findByIdAndDelete(orderId);
-      res.json({success:false, message:"Not Paid"})
+      res.json({ success: false, message: "Not Paid" });
     }
   } catch (error) {
     console.log(error);
-    res.json({success:false, message:"Error"})
+    res.json({ success: false, message: "Error" });
+  }
+};
+
+// user orders for frontend
+const userOrders = async (req, res) => {
+  try {
+    const orders = await orderModels.find({ userId: req.body.userId });
+    res.json({ success: true, data: orders });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Error" });
+  }
+};
+
+// Listing orders for admin panel
+const listOrders = async (req, res) => {
+  try {
+    const orders = await orderModels.find({});
+    res.json({ success: true, data: orders });
+  } catch (error) {
+    console.log(error);
+    res.json({ success: false, message: "Error" });
+  }
+};
+
+// api for updating order status
+const updateStatus = async (req, res) => {
+  try {
+    await orderModels.findByIdAndUpdate(req.body.orderId,{status:req.body.status});
+    res.json({success: true, message:"Status Updated"})
+  } catch (error) {
+    console.log(error);
+    res.json({success: false, message:"Error"})
+    
   }
 }
 
-export default {placeOrder, verifyOrder};
+export default { placeOrder, verifyOrder, userOrders, updateStatus, listOrders };
